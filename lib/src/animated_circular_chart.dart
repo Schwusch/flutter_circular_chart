@@ -5,7 +5,7 @@ import 'package:flutter_circular_chart/src/entry.dart';
 import 'package:flutter_circular_chart/src/painter.dart';
 
 // The default chart tween animation duration.
-const Duration _kDuration = const Duration(milliseconds: 300);
+const Duration _kDuration = Duration(milliseconds: 300);
 // The default angle the chart is oriented at.
 const double _kStartAngle = -90.0;
 
@@ -34,7 +34,6 @@ class AnimatedCircularChart extends StatefulWidget {
     this.holeRadius,
     this.startAngle = _kStartAngle,
     this.holeLabel,
-    this.labelStyle,
     this.edgeStyle = SegmentEdgeStyle.flat,
   })  : assert(size != null),
         super(key: key);
@@ -90,15 +89,7 @@ class AnimatedCircularChart extends StatefulWidget {
   ///
   /// It is used to display the value of a radial slider, and it is displayed
   /// in the center of the chart's hole.
-  ///
-  /// See also [labelStyle] which is used to render the label.
-  final String holeLabel;
-
-  /// The style used when rendering the [holeLabel].
-  ///
-  /// Defaults to the active [ThemeData]'s
-  /// [ThemeData.textTheme.body2] text style.
-  final TextStyle labelStyle;
+  final Widget holeLabel;
 
   /// The type of segment edges to be drawn.
   ///
@@ -133,7 +124,7 @@ class AnimatedCircularChart extends StatefulWidget {
   }
 
   @override
-  AnimatedCircularChartState createState() => new AnimatedCircularChartState();
+  AnimatedCircularChartState createState() => AnimatedCircularChartState();
 }
 
 /// The state for a circular chart that animates when its data is updated.
@@ -153,24 +144,31 @@ class AnimatedCircularChart extends StatefulWidget {
 class AnimatedCircularChartState extends State<AnimatedCircularChart>
     with TickerProviderStateMixin {
   CircularChartTween _tween;
-  AnimationController _animation;
+  AnimationController _animationController;
+  Animation _animation;
   final Map<String, int> _stackRanks = <String, int>{};
   final Map<String, int> _entryRanks = <String, int>{};
-  final TextPainter _labelPainter = new TextPainter();
 
   @override
   void initState() {
     super.initState();
-    _animation = new AnimationController(
+    _animationController = AnimationController(
       duration: widget.duration,
       vsync: this,
     );
 
+    _animation = CurvedAnimation(
+      parent: Tween(begin: 0.0, end: 1.0).animate(
+        _animationController,
+      ),
+      curve: Curves.bounceOut,
+    );
+
     _assignRanks(widget.initialChartData);
 
-    _tween = new CircularChartTween(
-      new CircularChart.empty(chartType: widget.chartType),
-      new CircularChart.fromData(
+    _tween = CircularChartTween(
+      CircularChart.empty(chartType: widget.chartType),
+      CircularChart.fromData(
         size: widget.size,
         data: widget.initialChartData,
         chartType: widget.chartType,
@@ -182,27 +180,12 @@ class AnimatedCircularChartState extends State<AnimatedCircularChart>
         edgeStyle: widget.edgeStyle,
       ),
     );
-    _animation.forward();
-  }
-
-  @override
-  void didUpdateWidget(AnimatedCircularChart oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.holeLabel != widget.holeLabel ||
-        oldWidget.labelStyle != widget.labelStyle) {
-      _updateLabelPainter();
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _updateLabelPainter();
+    _animationController.forward();
   }
 
   @override
   void dispose() {
-    _animation.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -215,29 +198,15 @@ class AnimatedCircularChartState extends State<AnimatedCircularChart>
     }
   }
 
-  void _updateLabelPainter() {
-    if (widget.holeLabel != null) {
-      TextStyle _labelStyle =
-          widget.labelStyle ?? Theme.of(context).textTheme.body2;
-      _labelPainter
-        ..text = new TextSpan(style: _labelStyle, text: widget.holeLabel)
-        ..textDirection = Directionality.of(context)
-        ..textScaleFactor = MediaQuery.of(context).textScaleFactor
-        ..layout();
-    } else {
-      _labelPainter.text = null;
-    }
-  }
-
   /// Update the data this chart represents and start an animation that will tween
   /// between the old data and this one.
   void updateData(List<CircularStackEntry> data) {
     _assignRanks(data);
 
     setState(() {
-      _tween = new CircularChartTween(
+      _tween = CircularChartTween(
         _tween.evaluate(_animation),
-        new CircularChart.fromData(
+        CircularChart.fromData(
           size: widget.size,
           data: data,
           chartType: widget.chartType,
@@ -249,17 +218,25 @@ class AnimatedCircularChartState extends State<AnimatedCircularChart>
           edgeStyle: widget.edgeStyle,
         ),
       );
-      _animation.forward(from: 0.0);
+      _animationController.forward(from: 0.0);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return new CustomPaint(
+    return SizedBox.fromSize(
       size: widget.size,
-      painter: new AnimatedCircularChartPainter(
-        _tween.animate(_animation),
-        widget.holeLabel != null ? _labelPainter : null,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CustomPaint(
+            size: widget.size,
+            painter: AnimatedCircularChartPainter(
+              _tween.animate(_animation),
+            ),
+          ),
+          widget.holeLabel
+        ],
       ),
     );
   }

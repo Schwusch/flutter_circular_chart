@@ -6,15 +6,13 @@ import 'package:flutter_circular_chart/src/circular_chart.dart';
 import 'package:flutter_circular_chart/src/stack.dart';
 
 class AnimatedCircularChartPainter extends CustomPainter {
-  AnimatedCircularChartPainter(this.animation, this.labelPainter)
+  AnimatedCircularChartPainter(this.animation)
       : super(repaint: animation);
 
   final Animation<CircularChart> animation;
-  final TextPainter labelPainter;
 
   @override
   void paint(Canvas canvas, Size size) {
-    _paintLabel(canvas, size, labelPainter);
     _paintChart(canvas, size, animation.value);
   }
 
@@ -30,7 +28,6 @@ class CircularChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    _paintLabel(canvas, size, labelPainter);
     _paintChart(canvas, size, chart);
   }
 
@@ -39,18 +36,6 @@ class CircularChartPainter extends CustomPainter {
 }
 
 const double _kRadiansPerDegree = Math.pi / 180;
-
-void _paintLabel(Canvas canvas, Size size, TextPainter labelPainter) {
-  if (labelPainter != null) {
-    labelPainter.paint(
-      canvas,
-      new Offset(
-        size.width / 2 - labelPainter.width / 2,
-        size.height / 2 - labelPainter.height / 2,
-      ),
-    );
-  }
-}
 
 void _paintChart(Canvas canvas, Size size, CircularChart chart) {
   final Paint segmentPaint = new Paint()
